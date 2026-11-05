@@ -30,7 +30,7 @@ and branch deletion are blocked. Contributors use the usual fork and PR flow.
 A private scheduled workflow checks public `main` every five minutes; GitHub may
 delay scheduled runs. It also supports a manual run. It waits for the configured
 public checks to pass, then merges the public commit into a private integration
-branch. A private PR and explicitly dispatched CI validate that merge. On a later
+branch. A private PR and its required CI validate that merge. On a later
 run, successful private checks allow the PR to merge without bypassing branch rules.
 Only accepted public `main` commits are imported; feature branches are not fetched.
 
@@ -45,9 +45,12 @@ rewrites; merge conflicts stop the import without changing private `main`.
 Private-only changes and both histories are retained. Already imported commits
 produce no new update. No force push or reverse synchronization is used.
 
-The controller explicitly dispatches CI on integration branches when no matching
-run exists. PR merges made with `GITHUB_TOKEN` do not start normal push workflows,
-so it also dispatches private CI after merging. Azure deployment additionally requires private repository
+After creating an integration PR, the controller pushes a private state marker to
+start normal PR validation. It requires successful checks on GitHub's proposed
+PR merge commit and can approve only its own validated import check runs. The
+marker does not change application source. PR merges made with `GITHUB_TOKEN` do
+not start normal push workflows, so the controller explicitly dispatches private
+CI after merging. Azure deployment additionally requires private repository
 variable `ENABLE_AZURE_DEPLOYMENTS=true`; keep it disabled until deployment
 variables and identities have been verified. Source synchronization itself does
 not require an Azure identity or any private credentials in the public repository.
