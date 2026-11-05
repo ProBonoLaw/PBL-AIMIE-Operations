@@ -25,7 +25,7 @@ jobs:
         env:
           PACKAGES_SOURCE_URL: ${{ vars.PACKAGES_SOURCE_URL || 'https://nuget.pkg.github.com/probonolaw/index.json' }}
           PACKAGES_READ_USERNAME: ${{ vars.PACKAGES_READ_USERNAME || github.actor }}
-          PACKAGES_READ_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
+          PACKAGES_READ_TOKEN: ${{ vars.PACKAGES_USE_READ_TOKEN == 'true' && secrets.PACKAGES_READ_TOKEN || github.token }}
         run: |
           if [[ -z "$PACKAGES_SOURCE_URL" || -z "$PACKAGES_READ_USERNAME" || -z "$PACKAGES_READ_TOKEN" ]]; then
             echo '::error title=Missing GitHub Packages credential::Set package feed credentials or grant the workflow token package read access. Grant this repository Actions read access to the package; GITHUB_TOKEN requires packages: read.'
@@ -34,7 +34,7 @@ jobs:
       - name: Restore GitHub package and NuGet dependencies
         env:
           PACKAGES_SOURCE_URL: ${{ vars.PACKAGES_SOURCE_URL || 'https://nuget.pkg.github.com/probonolaw/index.json' }}
-          NuGetPackageSourceCredentials_github: Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
+          NuGetPackageSourceCredentials_github: Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ vars.PACKAGES_USE_READ_TOKEN == 'true' && secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
         run: |
           if ! dotnet restore Aimie.Operations.slnx --configfile NuGet.Config; then
             echo '::error title=GitHub Packages access::Check package read access for this repository GITHUB_TOKEN or the configured package credential.'
@@ -74,7 +74,7 @@ jobs:
           tags: aimie-operations:pr-${{ github.event.pull_request.number }}
           secrets: |
             github_packages_source=${{ vars.PACKAGES_SOURCE_URL || 'https://nuget.pkg.github.com/probonolaw/index.json' }}
-            github_packages_credentials=Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
+            github_packages_credentials=Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ vars.PACKAGES_USE_READ_TOKEN == 'true' && secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
       - name: Build Markdown Converter image without publishing
         uses: docker/build-push-action@v7
         with:
@@ -112,7 +112,7 @@ jobs:
           tags: ${{ vars.ACR_LOGIN_SERVER }}/aimie-operations:sha-${{ github.sha }}
           secrets: |
             github_packages_source=${{ vars.PACKAGES_SOURCE_URL || 'https://nuget.pkg.github.com/probonolaw/index.json' }}
-            github_packages_credentials=Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
+            github_packages_credentials=Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ vars.PACKAGES_USE_READ_TOKEN == 'true' && secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
       - name: Build and push immutable Markdown Converter image
         uses: docker/build-push-action@v7
         with:

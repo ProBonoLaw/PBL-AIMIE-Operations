@@ -50,7 +50,7 @@ jobs:
         env:
           PACKAGES_SOURCE_URL: ${{ vars.PACKAGES_SOURCE_URL || 'https://nuget.pkg.github.com/probonolaw/index.json' }}
           PACKAGES_READ_USERNAME: ${{ vars.PACKAGES_READ_USERNAME || github.actor }}
-          PACKAGES_READ_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
+          PACKAGES_READ_TOKEN: ${{ vars.PACKAGES_USE_READ_TOKEN == 'true' && secrets.PACKAGES_READ_TOKEN || github.token }}
         run: |
           if [[ -z "$PACKAGES_SOURCE_URL" || -z "$PACKAGES_READ_USERNAME" || -z "$PACKAGES_READ_TOKEN" ]]; then
             echo '::error title=Missing GitHub Packages credential::Set PACKAGES_SOURCE_URL, PACKAGES_READ_USERNAME and PACKAGES_READ_TOKEN with access to the orchestration package.'
@@ -73,7 +73,7 @@ jobs:
           tags: ${{ vars.ACR_LOGIN_SERVER }}/aimie-operations:${{ inputs.image_tag }}
           secrets: |
             github_packages_source=${{ vars.PACKAGES_SOURCE_URL || 'https://nuget.pkg.github.com/probonolaw/index.json' }}
-            github_packages_credentials=Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
+            github_packages_credentials=Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ vars.PACKAGES_USE_READ_TOKEN == 'true' && secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
       - name: Build and push production Markdown Converter image
         uses: docker/build-push-action@v7
         with:

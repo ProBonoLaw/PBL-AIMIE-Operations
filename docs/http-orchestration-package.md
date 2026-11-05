@@ -61,3 +61,5 @@ PR against the public package before treating contributor CI as ready.
 
 See [GitHub's NuGet registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-nuget-registry)
 for supported credentials and package access configuration.
+
+Package credentials default to `GITHUB_TOKEN` even when a legacy organization secret exists. To explicitly select the `PACKAGES_READ_TOKEN` secret, set `PACKAGES_USE_READ_TOKEN=true` and `PACKAGES_READ_USERNAME` in the consuming repository.
