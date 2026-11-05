@@ -20,7 +20,10 @@ The workflow passed package tests and inspection, published the package, and
 verified an isolated restore from the registry against the original archive.
 The [package page](https://github.com/orgs/ProBonoLaw/packages/nuget/package/DaatPhoenix.HttpOrchestration)
 was verified without authentication on November 5, 2026: version `1.0.2` is
-**Public**. External-contributor CI access still needs an end-to-end check.
+**Public**. The [initial AIMIE CI run](https://github.com/ProBonoLaw/PBL-AIMIE-Operations/actions/runs/42088263386)
+restored it with this repository's `GITHUB_TOKEN` and successfully built both containers.
+Fork pull requests use read-only workflow permissions and are subject to the same
+package restore, build and test checks.
 
 ## Publishing
 
