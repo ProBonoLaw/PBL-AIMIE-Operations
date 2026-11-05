@@ -1,0 +1,78 @@
+name: Publish application settings
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Private deployment environment to configure
+        type: choice
+        options: [aks-test, aks-production]
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  configure:
+    if: github.event.repository.private && vars.ENABLE_AZURE_DEPLOYMENTS == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: appsettings-${{ inputs.environment }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DEPLOYMENT_ENV: ${{ inputs.environment }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_PRODUCTION_SUBSCRIPTION_ID: ${{ vars.AZURE_PRODUCTION_SUBSCRIPTION_ID }}
+      KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME }}
+      STORAGE_RESOURCE_GROUP: ${{ vars.STORAGE_RESOURCE_GROUP }}
+      STORAGE_ACCOUNT: ${{ vars.STORAGE_ACCOUNT }}
+      COSMOS_RESOURCE_GROUP: ${{ vars.COSMOS_RESOURCE_GROUP }}
+      COSMOS_ACCOUNT: ${{ vars.COSMOS_ACCOUNT }}
+      COSMOS_ENDPOINT: ${{ vars.COSMOS_ENDPOINT }}
+      COSMOS_DATABASE: ${{ vars.COSMOS_DATABASE }}
+      EVENTHUB_NAMESPACE: ${{ vars.EVENTHUB_NAMESPACE }}
+      CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+      PORTAL_RESOURCE_GROUP: ${{ vars.PORTAL_RESOURCE_GROUP }}
+      PORTAL_WEB_APP: ${{ vars.PORTAL_WEB_APP }}
+      SHAREPOINT_TENANT_ID: ${{ vars.SHAREPOINT_TENANT_ID }}
+      SHAREPOINT_CLIENT_ID: ${{ vars.SHAREPOINT_CLIENT_ID }}
+      SHAREPOINT_HOST: ${{ vars.SHAREPOINT_HOST }}
+      SHAREPOINT_SITE_PREFIX: ${{ vars.SHAREPOINT_SITE_PREFIX }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the environment subscription
+        shell: bash
+        run: |
+          if [[ "$DEPLOYMENT_ENV" == aks-production ]]; then
+            AZURE_SUBSCRIPTION_ID="${AZURE_PRODUCTION_SUBSCRIPTION_ID:?Set AZURE_PRODUCTION_SUBSCRIPTION_ID}"
+          fi
+          if [[ ! "$AZURE_SUBSCRIPTION_ID" =~ ^[[:xdigit:]]{8}(-[[:xdigit:]]{4}){3}-[[:xdigit:]]{12}$ ]]; then
+            echo 'Set a valid subscription ID for the selected environment' >&2
+            exit 1
+          fi
+          printf 'AZURE_SUBSCRIPTION_ID=%s\n' "$AZURE_SUBSCRIPTION_ID" >> "$GITHUB_ENV"
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.APPSETTINGS_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+      - name: Generate and publish environment settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f .local/appsettings.*.json .local/markdown-converter-appsettings.*.json' EXIT
+          if [[ "$DEPLOYMENT_ENV" == aks-production ]]; then
+            : "${AZURE_PRODUCTION_SUBSCRIPTION_ID:?Set AZURE_PRODUCTION_SUBSCRIPTION_ID}"
+            python3 scripts/generate-production-appsettings.py
+            suffix=Production
+          else
+            python3 scripts/generate-test-appsettings.py
+            suffix=Test
+          fi
+          python3 scripts/publish-appsettings.py --file ".local/appsettings.$suffix.json" --apply
+          python3 scripts/publish-markdown-converter-appsettings.py --file ".local/markdown-converter-appsettings.$suffix.json" --apply

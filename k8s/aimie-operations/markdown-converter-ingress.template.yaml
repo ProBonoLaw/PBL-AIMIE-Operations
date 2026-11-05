@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: markdown-converter
+  namespace: aimie-operations
+  annotations:
+    kubernetes.azure.com/tls-cert-keyvault-uri: <markdown-converter-tls-cert-keyvault-uri>
+    nginx.ingress.kubernetes.io/proxy-body-size: 25m
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
+  tls:
+    - hosts:
+        - <markdown-converter-ingress-host>
+      secretName: keyvault-markdown-converter
+  rules:
+    - host: <markdown-converter-ingress-host>
+      http:
+        paths:
+          - path: /api/
+            pathType: Prefix
+            backend:
+              service:
+                name: markdown-converter
+                port:
+                  name: http
+          - path: /healthz
+            pathType: Exact
+            backend:
+              service:
+                name: markdown-converter
+                port:
+                  name: http

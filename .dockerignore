@@ -1,0 +1,13 @@
+**/bin
+**/obj
+.git
+.github
+.devcontainer
+config.toml
+NuGet.Private.Config
+.local-nuget
+.local
+**/.env
+**/.env.*
+README.md
+k8s

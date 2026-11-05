@@ -1,0 +1,80 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "AIMIE: Declaration (test Event Hub)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/Aimie.Operations/bin/Debug/net10.0/Aimie.Operations.dll",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "build AIMIE Operations",
+      "env": {
+        "APPSETTINGS_FILE": "${workspaceFolder}/.local/appsettings.Test.json",
+        "NOTIFICATION_SERVICE_URL": "http://127.0.0.1:5080/api/sendNotice",
+        "ROLE": "declaration",
+        "EVENTHUB_CONSUMER_GROUP": "aimie-ops-local-declaration",
+        "LOCAL_DEBUG": "1",
+        "LOCAL_ACCOUNT_ID": "${input:aimieAccountId}"
+      }
+    },
+    {
+      "name": "AIMIE: QA (test Event Hub)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/Aimie.Operations/bin/Debug/net10.0/Aimie.Operations.dll",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "build AIMIE Operations",
+      "env": {
+        "APPSETTINGS_FILE": "${workspaceFolder}/.local/appsettings.Test.json",
+        "NOTIFICATION_SERVICE_URL": "http://127.0.0.1:5080/api/sendNotice",
+        "ROLE": "qa",
+        "EVENTHUB_CONSUMER_GROUP": "aimie-ops-local-qa",
+        "LOCAL_DEBUG": "1",
+        "LOCAL_ACCOUNT_ID": "${input:aimieAccountId}"
+      }
+    },
+    {
+      "name": "AIMIE: Argument Builder (test Event Hub)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/Aimie.Operations/bin/Debug/net10.0/Aimie.Operations.dll",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "build AIMIE Operations",
+      "env": {
+        "APPSETTINGS_FILE": "${workspaceFolder}/.local/appsettings.Test.json",
+        "NOTIFICATION_SERVICE_URL": "http://127.0.0.1:5080/api/sendNotice",
+        "ROLE": "argument-builder",
+        "EVENTHUB_CONSUMER_GROUP": "aimie-ops-local-argument-builder",
+        "LOCAL_DEBUG": "1",
+        "LOCAL_ACCOUNT_ID": "${input:aimieAccountId}"
+      }
+    },
+    {
+      "name": "AIMIE: Timeline Builder (test Event Hub)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/Aimie.Operations/bin/Debug/net10.0/Aimie.Operations.dll",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "build AIMIE Operations",
+      "env": {
+        "APPSETTINGS_FILE": "${workspaceFolder}/.local/appsettings.Test.json",
+        "NOTIFICATION_SERVICE_URL": "http://127.0.0.1:5080/api/sendNotice",
+        "ROLE": "timeline-builder",
+        "EVENTHUB_CONSUMER_GROUP": "aimie-ops-local-timeline-builder",
+        "LOCAL_DEBUG": "1",
+        "LOCAL_ACCOUNT_ID": "${input:aimieAccountId}"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "aimieAccountId",
+      "type": "promptString",
+      "description": "Test accountId to process; other accounts are skipped"
+    }
+  ]
+}

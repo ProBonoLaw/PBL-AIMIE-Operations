@@ -1,0 +1,18 @@
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: markdown-converter-appsettings
+  namespace: aimie-operations
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    clientID: "<converter-workload-identity-client-id>"
+    keyvaultName: "<key-vault-name>"
+    tenantId: "<azure-tenant-id>"
+    objects: |
+      array:
+        - |
+          objectName: markdown-converter-appsettings
+          objectType: secret
+          objectAlias: appsettings.json

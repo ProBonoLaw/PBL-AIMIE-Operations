@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MarkdownConverter/MarkdownConverter.csproj" />
+    <Project Path="src/Aimie.Operations/Aimie.Operations.csproj" />
+    <Project Path="src/Aimie.Shared/Aimie.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MarkdownConverter.Tests/MarkdownConverter.Tests.csproj" />
+    <Project Path="tests/Aimie.Operations.Tests/Aimie.Operations.Tests.csproj" />
+  </Folder>
+</Solution>

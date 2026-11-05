@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build AIMIE Operations",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "src/Aimie.Operations/Aimie.Operations.csproj", "--configuration", "Debug"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test AIMIE Operations",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "Aimie.Operations.slnx", "--configuration", "Debug"],
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

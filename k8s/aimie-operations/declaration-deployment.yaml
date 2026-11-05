@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: declaration-generation
+  namespace: aimie-operations
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: declaration-generation
+  template:
+    metadata:
+      labels:
+        app: declaration-generation
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: aimie-operations
+      terminationGracePeriodSeconds: 180
+      volumes:
+        - name: appsettings
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: aimie-operations-appsettings
+      containers:
+        - name: worker
+          image: <acr-login-server>/aimie-operations:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: appsettings
+              mountPath: /mnt/keyvault
+              readOnly: true
+          env:
+            - name: ROLE
+              value: declaration
+            - name: EVENTHUB_CONSUMER_GROUP
+              value: aimie-ops-declaration
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi

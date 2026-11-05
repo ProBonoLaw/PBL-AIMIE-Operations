@@ -1,0 +1,109 @@
+flowchart LR
+
+%% Lane 1
+subgraph CALLERS["1 - Callers · AIMIE Operations + Portal"]
+direction TB
+  C_DOCX["declaration-generation worker<br/>ToWordAsync · MARKDOWN_TO_DOCX_URL"]
+  C_IDX["declaration + QA workers<br/>DocumentGenerationHandler<br/>EXHIBIT_INDEX_URL"]
+  C_PORTAL["Portal web app<br/>AIMIE_QA_FORMATTING_URL<br/>QA answers · Argument Builder drafts"]
+  C_HTML["data-ingestion Logic App<br/>legacy HTML path"]
+  NOTE_PORTAL["External callers require a reachable<br/>ingress URL and TLS trust"]
+end
+
+%% Lane 2
+subgraph EDGE["2 - AKS edge · aimie-operations"]
+direction TB
+  SVC["ClusterIP Service<br/>markdown-converter:80 to 8080"]
+  ING["Internal NGINX Ingress<br/>markdown-converter.ENV<br/>TLS 1.2 / 1.3 · body 25m"]
+  POD["Deployment · 2 replicas<br/>/healthz readiness 10s · liveness 20s<br/>read-only root FS · non-root"]
+end
+
+%% Lane 3
+subgraph API["3 - markdown-converter · API"]
+direction TB
+  KES["Kestrel · 25 MB max request body<br/>CORS policy · CORS_ALLOWED_ORIGINS<br/>POST GET OPTIONS"]
+  MW["CorrelationLoggingMiddleware<br/>X-Correlation-Id / X-Operation-Id · GUID when absent<br/>scoped logs · both echoed on the response"]
+  VAL{"Body content present?"}
+  BAD["400 Bad Request<br/>Please provide Markdown / HTML content"]
+
+  A1["NormalizeTypography<br/>smart quotes + dashes to ASCII"]
+  A2["Markdig<br/>Markdown to HTML"]
+  A3["HtmlToOpenXml + OpenXml<br/>build DOCX in MemoryStream"]
+  A_OUT["DOCX bytes<br/>converted-TIMESTAMP.docx"]
+
+  B1["NormalizeTypography<br/>pick matcher: regular vs irregular<br/>by match count"]
+  B_LOOK{"For each match:<br/>docId in context<br/>and sourceUrl set?"}
+  B_INDEX["Assign exhibit index<br/>first occurrence wins"]
+  B_SKIP["Warn + skip reference<br/>unknown docId or empty sourceUrl"]
+  B_REPL["Replace pass over every match"]
+  B_LINK["Numbered link to sourceUrl<br/>bare n by default · prefix only when<br/>useExhibitNomenclature is set<br/>parenthesized for the regular matcher"]
+  B_EMPTY["Empty string<br/>citation removed, still HTTP 200"]
+  B_OUT["JSON response<br/>document + exhibits[]"]
+
+  C1["ReverseMarkdown · GitHub flavored<br/>HTML to Markdown"]
+  C_OUT["text/markdown file<br/>converted-TIMESTAMP.md"]
+
+  LOGS["Console logs with scopes<br/>CorrelationId · OperationId · TraceId"]
+  STATELESS["Stateless service<br/>no Azure Storage account · no Function key · no persisted state"]
+end
+
+%% Lane 4
+subgraph SINKS["4 - Outputs + stores"]
+direction TB
+  SP["SharePoint · written by the worker<br/>Declaration.md / .docx<br/>Exhibit N.md / .docx"]
+  BLOB["Shared AIMIE storage<br/>Indexed result.json"]
+  COSMOS["Cosmos DB<br/>Request record + file references"]
+  EH["aimie-response-queue<br/>Generated + result reference"]
+  UI["Portal QA answer<br/>rendered with exhibit links"]
+  INGEST["Ingestion pipeline<br/>Markdown case content"]
+end
+
+%% Lane 5
+subgraph CONF["5 - Config + identity"]
+direction TB
+  WI["Workload identity<br/>ServiceAccount markdown-converter"]
+  KV["Key Vault<br/>markdown-converter-appsettings"]
+  CSI["Secrets Store CSI volume<br/>/mnt/keyvault/appsettings.json · read-only"]
+end
+
+%% startup and operations
+WI -- "read secret" --> KV -- "CSI mount" --> CSI
+CSI -. "settings at startup" .-> KES
+POD -- "stdout" --> LOGS
+
+%% every request shares one pipeline before any conversion runs
+C_DOCX -- "POST markdown" --> SVC
+C_IDX -- "POST document + context[]" --> SVC
+C_PORTAL -- "QA + Argument Builder formatting" --> SVC
+C_HTML -- "POST html" --> ING
+NOTE_PORTAL -.- C_PORTAL
+SVC --> KES
+ING --> KES
+KES --> MW --> VAL
+VAL -- "empty body" --> BAD
+VAL -- "POST /api/markdowntodocxconverter" --> A1
+VAL -- "POST /api/markdowndocumentexhibitindexer" --> B1
+VAL -- "POST /api/htmltomarkdownconverter" --> C1
+
+%% route A - Markdown to DOCX
+A1 --> A2 --> A3 --> A_OUT
+A_OUT -- "DOCX bytes" --> C_DOCX
+C_DOCX --> SP
+
+%% route B - exhibit indexing
+B1 --> B_LOOK
+B_LOOK -- "yes" --> B_INDEX
+B_LOOK -- "no · warn" --> B_SKIP
+B_INDEX --> B_REPL
+B_SKIP -- "left unindexed" --> B_REPL
+B_REPL -- "indexed" --> B_LINK --> B_OUT
+B_REPL -- "not indexed" --> B_EMPTY --> B_OUT
+B_OUT -- "document + exhibits[]" --> C_IDX
+B_OUT -- "exhibit links" --> UI
+C_IDX -- "result.json" --> BLOB
+C_IDX -- "request record" --> COSMOS
+C_IDX -. "publish result" .-> EH
+
+%% route C - legacy HTML to Markdown
+C1 --> C_OUT
+C_OUT -- "case content" --> INGEST

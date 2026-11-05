@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.local-nuget/
+NuGet.Private.Config
+.local/
+__pycache__/
+*.pyc
+TestResults/
+.env
+.env.*
+!.env.example
+config.toml
+*.pem
+*.pfx
+*.key

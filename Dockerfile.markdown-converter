@@ -1,0 +1,15 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /source
+COPY src/MarkdownConverter/MarkdownConverter.csproj src/MarkdownConverter/
+RUN dotnet restore src/MarkdownConverter/MarkdownConverter.csproj \
+    --source https://api.nuget.org/v3/index.json
+COPY src/MarkdownConverter/ src/MarkdownConverter/
+RUN dotnet publish src/MarkdownConverter/MarkdownConverter.csproj -c Release --no-restore -o /app
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+WORKDIR /app
+COPY --from=build /app .
+USER $APP_UID
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "MarkdownConverter.dll"]

@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: markdown-converter
+  namespace: aimie-operations
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: markdown-converter
+  template:
+    metadata:
+      labels:
+        app: markdown-converter
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: markdown-converter
+      volumes:
+        - name: appsettings
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: markdown-converter-appsettings
+      containers:
+        - name: api
+          image: <acr-login-server>/markdown-converter:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: appsettings
+              mountPath: /mnt/keyvault
+              readOnly: true
+          env:
+            - name: APPSETTINGS_FILE
+              value: /mnt/keyvault/appsettings.json
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: markdown-converter
+  namespace: aimie-operations
+spec:
+  type: ClusterIP
+  selector:
+    app: markdown-converter
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

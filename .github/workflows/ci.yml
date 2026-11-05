@@ -1,0 +1,132 @@
+name: Build and test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify GitHub Packages credential
+        env:
+          PACKAGES_SOURCE_URL: ${{ vars.PACKAGES_SOURCE_URL || 'https://nuget.pkg.github.com/probonolaw/index.json' }}
+          PACKAGES_READ_USERNAME: ${{ vars.PACKAGES_READ_USERNAME || github.actor }}
+          PACKAGES_READ_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
+        run: |
+          if [[ -z "$PACKAGES_SOURCE_URL" || -z "$PACKAGES_READ_USERNAME" || -z "$PACKAGES_READ_TOKEN" ]]; then
+            echo '::error title=Missing GitHub Packages credential::Set package feed credentials or grant the workflow token package read access. Grant this repository Actions read access to the package; GITHUB_TOKEN requires packages: read.'
+            exit 1
+          fi
+      - name: Restore GitHub package and NuGet dependencies
+        env:
+          PACKAGES_SOURCE_URL: ${{ vars.PACKAGES_SOURCE_URL || 'https://nuget.pkg.github.com/probonolaw/index.json' }}
+          NuGetPackageSourceCredentials_github: Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
+        run: |
+          if ! dotnet restore Aimie.Operations.slnx --configfile NuGet.Config; then
+            echo '::error title=GitHub Packages access::Check package read access for this repository GITHUB_TOKEN or the configured package credential.'
+            exit 1
+          fi
+      - name: Build
+        run: dotnet build Aimie.Operations.slnx --configuration Release --no-restore
+      - name: Validate deployment configuration
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
+          python3 -m unittest discover -s tests/scripts -v
+      - name: Test
+        run: dotnet test Aimie.Operations.slnx --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+      - name: Check coverage
+        run: python3 scripts/check-coverage.py TestResults
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-cobertura
+          path: TestResults/**/coverage.cobertura.xml
+
+  image-check:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v4
+      - name: Build image without publishing
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          tags: aimie-operations:pr-${{ github.event.pull_request.number }}
+          secrets: |
+            github_packages_source=${{ vars.PACKAGES_SOURCE_URL || 'https://nuget.pkg.github.com/probonolaw/index.json' }}
+            github_packages_credentials=Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
+      - name: Build Markdown Converter image without publishing
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.markdown-converter
+          push: false
+          tags: markdown-converter:pr-${{ github.event.pull_request.number }}
+
+  image:
+    if: github.event.repository.private && vars.ENABLE_AZURE_DEPLOYMENTS == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: test
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Sign in to ACR
+        env:
+          ACR_NAME: ${{ vars.ACR_NAME }}
+        run: az acr login --name "${ACR_NAME:?Set ACR_NAME}"
+      - name: Build and push immutable test image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ vars.ACR_LOGIN_SERVER }}/aimie-operations:sha-${{ github.sha }}
+          secrets: |
+            github_packages_source=${{ vars.PACKAGES_SOURCE_URL || 'https://nuget.pkg.github.com/probonolaw/index.json' }}
+            github_packages_credentials=Username=${{ vars.PACKAGES_READ_USERNAME || github.actor }};Password=${{ secrets.PACKAGES_READ_TOKEN || github.token }};ValidAuthenticationTypes=Basic
+      - name: Build and push immutable Markdown Converter image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.markdown-converter
+          push: true
+          tags: ${{ vars.ACR_LOGIN_SERVER }}/markdown-converter:sha-${{ github.sha }}
+
+  deploy:
+    if: github.event.repository.private && vars.ENABLE_AZURE_DEPLOYMENTS == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    needs: image
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-aks-test.yml
+    with:
+      image_tag: sha-${{ github.sha }}

@@ -1,0 +1,51 @@
+name: Deploy AKS test
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: ACR image tag sha-<40-character main commit SHA>, not a sha256 digest
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event.repository.private && vars.ENABLE_AZURE_DEPLOYMENTS == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: aks-test
+    timeout-minutes: 35
+    concurrency:
+      group: aimie-operations-aks-test
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AKS_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy AIMIE workers and Markdown Converter
+        env:
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_WORKLOAD_IDENTITY_CLIENT_ID: ${{ vars.AZURE_WORKLOAD_IDENTITY_CLIENT_ID }}
+          AZURE_CONVERTER_WORKLOAD_IDENTITY_CLIENT_ID: ${{ vars.AZURE_CONVERTER_WORKLOAD_IDENTITY_CLIENT_ID }}
+          AKS_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+          AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+          KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME }}
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+          MARKDOWN_CONVERTER_INGRESS_HOST: ${{ vars.MARKDOWN_CONVERTER_INGRESS_HOST }}
+          MARKDOWN_CONVERTER_TLS_CERT_KEYVAULT_URI: ${{ vars.MARKDOWN_CONVERTER_TLS_CERT_KEYVAULT_URI }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: bash scripts/deploy-aks-test.sh

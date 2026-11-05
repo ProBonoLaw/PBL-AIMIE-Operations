@@ -1,0 +1,34 @@
+name: Repository hygiene
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check deployment identifiers
+        run: python3 scripts/check-public-source.py
+      - name: Install secret scanner
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/install-gitleaks.sh
+      - name: Scan public history or private working tree
+        env:
+          PRIVATE_REPOSITORY: ${{ github.event.repository.private }}
+        run: |
+          if [[ "$PRIVATE_REPOSITORY" == true ]]; then
+            # Archived private history is intentionally retained through cutover.
+            gitleaks dir --redact=100 --no-banner .
+          else
+            gitleaks git --redact=100 --no-banner --log-opts='--all' .
+          fi
