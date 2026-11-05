@@ -46,3 +46,5 @@ Production obtains Cosmos/Event Hubs/notification settings from Azure and its so
 5. Build and deploy, then verify connectivity and Graph write access with an isolated test account.
 
 Local publishing scripts accept `--file`, `--vault`, and `--subscription`; `KEY_VAULT_NAME` and `AZURE_SUBSCRIPTION_ID` supply the latter defaults. They only upload with `--apply`. For local production publication, pass the production subscription explicitly. The production generator uses `AZURE_PRODUCTION_SUBSCRIPTION_ID` or its `--subscription` argument.
+
+Package credentials default to `GITHUB_TOKEN` even when a legacy organization secret exists. To explicitly select the `PACKAGES_READ_TOKEN` secret, set `PACKAGES_USE_READ_TOKEN=true` and `PACKAGES_READ_USERNAME` in the consuming repository.
