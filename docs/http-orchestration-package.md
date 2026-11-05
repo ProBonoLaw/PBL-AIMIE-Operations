@@ -22,8 +22,10 @@ The [package page](https://github.com/orgs/ProBonoLaw/packages/nuget/package/Daa
 was verified without authentication on November 5, 2026: version `1.0.2` is
 **Public**. The [initial AIMIE CI run](https://github.com/ProBonoLaw/PBL-AIMIE-Operations/actions/runs/42088263386)
 restored it with this repository's `GITHUB_TOKEN` and successfully built both containers.
-Fork pull requests use read-only workflow permissions and are subject to the same
-package restore, build and test checks.
+[Fork PR #1](https://github.com/ProBonoLaw/PBL-AIMIE-Operations/pull/1) also passed
+package restore, all tests and both container builds with read-only workflow
+permissions. Private deployment builds passed with their built-in token after
+making legacy credential overrides an explicit opt-in.
 
 ## Publishing
 
@@ -56,8 +58,7 @@ in the root README. Docker uses the same URL and credential via BuildKit secrets
 
 GitHub requires authentication even for public NuGet packages. Publishing under
 ProBonoLaw removes the need for access to the original private organization; it
-does not enable anonymous NuGet downloads. Verify a fresh external-contributor
-PR against the public package before treating contributor CI as ready.
+does not enable anonymous NuGet downloads. Fork contributor access was verified by the PR linked above.
 
 See [GitHub's NuGet registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-nuget-registry)
 for supported credentials and package access configuration.

@@ -36,5 +36,5 @@ production rollout. Live SharePoint writes and Azure deployment require separate
 integration verification; passing unit tests does not verify those services.
 
 Public NuGet downloads still require GitHub authentication. A contributor can use
-a token with `read:packages`; workflows use their repository token. A successful
-same-repository build does not by itself prove a fork's token has package access.
+a token with `read:packages`; workflows use their repository token. Both the public repository build and [fork PR #1](https://github.com/ProBonoLaw/PBL-AIMIE-Operations/pull/1)
+passed package restore and container builds using their workflow tokens.

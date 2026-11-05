@@ -34,17 +34,20 @@ branch. A private PR and explicitly dispatched CI validate that merge. On a late
 run, successful private checks allow the PR to merge without bypassing branch rules.
 Only accepted public `main` commits are imported; feature branches are not fetched.
 
-The controller runs from private `main` using its short-lived repository token.
-The controller paths and state are private-only, and imports refuse a public tree
+The controller runs from private `main`. Git pushes use a deploy key scoped to
+that private repository, stored in a protected private GitHub environment. API
+calls and PR merges use the short-lived repository `GITHUB_TOKEN`. This allows
+workflow files to be imported without granting any private write credential to
+the public repository. The controller paths and state are private-only, and imports refuse a public tree
 containing those paths. It fetches Git objects without executing public scripts.
 Concurrent imports are serialized. A recorded public commit detects history
 rewrites; merge conflicts stop the import without changing private `main`.
 Private-only changes and both histories are retained. Already imported commits
 produce no new update. No force push or reverse synchronization is used.
 
-Because pushes/merges made with `GITHUB_TOKEN` do not start normal push workflows,
-the controller explicitly dispatches private CI on the integration branch and
-again after merging. Azure deployment additionally requires private repository
+The controller explicitly dispatches CI on integration branches when no matching
+run exists. PR merges made with `GITHUB_TOKEN` do not start normal push workflows,
+so it also dispatches private CI after merging. Azure deployment additionally requires private repository
 variable `ENABLE_AZURE_DEPLOYMENTS=true`; keep it disabled until deployment
 variables and identities have been verified. Source synchronization itself does
 not require an Azure identity or any private credentials in the public repository.
