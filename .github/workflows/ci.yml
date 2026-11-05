@@ -42,7 +42,7 @@ jobs:
           fi
       - name: Build
         run: dotnet build Aimie.Operations.slnx --configuration Release --no-restore
-      - name: Validate deployment configuration
+      - name: Validate configuration and public source safeguards
         run: |
           for script in scripts/*.sh; do bash -n "$script"; done
           python3 -m unittest discover -s tests/scripts -v
