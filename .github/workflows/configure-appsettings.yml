@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   configure:
-    if: github.event.repository.private && vars.ENABLE_AZURE_DEPLOYMENTS == 'true' && github.ref == 'refs/heads/main'
+    if: ${{ (!contains(inputs.environment, 'test') || vars.TEST_ENVIRONMENT_ENABLED == 'true') && (github.event.repository.private && vars.ENABLE_AZURE_DEPLOYMENTS == 'true' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     concurrency:
