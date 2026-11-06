@@ -84,7 +84,7 @@ jobs:
           tags: markdown-converter:pr-${{ github.event.pull_request.number }}
 
   image:
-    if: github.event.repository.private && vars.ENABLE_AZURE_DEPLOYMENTS == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    if: ${{ vars.TEST_ENVIRONMENT_ENABLED == 'true' && (github.event.repository.private && vars.ENABLE_AZURE_DEPLOYMENTS == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main') }}
     needs: test
     runs-on: ubuntu-latest
     environment: test
@@ -122,7 +122,7 @@ jobs:
           tags: ${{ vars.ACR_LOGIN_SERVER }}/markdown-converter:sha-${{ github.sha }}
 
   deploy:
-    if: github.event.repository.private && vars.ENABLE_AZURE_DEPLOYMENTS == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    if: ${{ vars.TEST_ENVIRONMENT_ENABLED == 'true' && (github.event.repository.private && vars.ENABLE_AZURE_DEPLOYMENTS == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main') }}
     needs: image
     permissions:
       contents: read
